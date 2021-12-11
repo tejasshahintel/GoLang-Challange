@@ -4,8 +4,11 @@ import ("fmt"
 		"os"
 		//"reflect"
 		"errors"
+		"crypto/rand"
+		"crypto/rsa"
 )
 
+//Method to validate inputs. Checks if string is provided. Also, checks for the length of the string
 func validateInput(args []string)(error){
 
 	if len(os.Args)!=2{
@@ -18,6 +21,20 @@ func validateInput(args []string)(error){
 	
 	}
 	return nil
+}
+
+func GenerateKeys(){
+
+	key, err := rsa.GenerateKey(rand.Reader, 4096)
+	
+	if err!= nil{
+		panic(err)
+	}
+	
+	fmt.Println("Generating Public Key ..")
+	pubKey := key.Public()
+	fmt.Println(pubKey)
+	
 }
 func main() {
 	fmt.Println("crypto sign code challenge")
@@ -32,5 +49,6 @@ func main() {
 	}
 	input := os.Args[1]
 	fmt.Println(input)
+	GenerateKeys()
 
 }
