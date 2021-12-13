@@ -1,15 +1,18 @@
 package main
+
 import (
-        "fmt"
-		//"os"
-        "testing"
-        "crypto/rsa"
-        "crypto/x509"
-        "crypto/sha256"
-        "encoding/pem"
-        "encoding/base64"
-        "crypto"
+	//"fmt"
+	//"os"
+	"crypto"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/base64"
+	"encoding/json"
+	"encoding/pem"
+	"testing"
 )
+
 const keys = `
 -----BEGIN RSA PRIVATE KEY-----
 MIIJKgIBAAKCAgEA8ksuZU2CwPWUOknmK/IDRRJ9fGfMf/GUwkslr01Q1T5XpPce
@@ -77,7 +80,7 @@ r9SHuRWk1hBlBySOvhBX/D8HqDZzNQUeJoehcwZUsfiddeRTOU/kSucCAwEAAQ==
 -----END RSA PUBLIC KEY-----
 `
 
-func keyContents() (*rsa.PrivateKey, string) {
+func getkeys() (*rsa.PrivateKey, string) {
 	block, rest := pem.Decode([]byte(keys))
 
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
@@ -87,27 +90,32 @@ func keyContents() (*rsa.PrivateKey, string) {
 
 	return privateKey, publicKey
 }
-func TestSignature(t *testing.T){
-    
-    privKey, pubKey := keyContents()
-    /*if err != nil {
-		t.Errorf("Error signing message: %v", err)
-	}*/
-    input := "Test Application"
-    data := []byte(input)
-    output , err := perfSignature(input, pubKey, privKey)
-    if err != nil {
+func TestSignature(t *testing.T) {
+
+	privKey, pubKey := getkeys()
+
+	input := "Test Application"
+	data := []byte(input)
+	signature, err := perfSignature(input, pubKey, privKey)
+	if err != nil {
 		t.Errorf("Error signing message: %v", err)
 	}
-    decodedSign, err := base64.StdEncoding.DecodeString(output.Signature)
-    if err != nil {
+	decodedSign, err := base64.StdEncoding.DecodeString(signature.Signature)
+	if err != nil {
 		t.Errorf("Error signing message: %v", err)
 	}
-    fmt.Printf("Decoded:%T", decodedSign)
-    
-    hash := sha256.Sum256(data)
-    err1 := rsa.VerifyPKCS1v15(&privKey.PublicKey, crypto.SHA256, hash[:], decodedSign)
-    if err1 != nil {
-        t.Errorf("Error signing message: %v", err)
-        }
+	//fmt.Printf("Decoded:%T", decodedSign)
+
+	hash := sha256.Sum256(data)
+	err1 := rsa.VerifyPKCS1v15(&privKey.PublicKey, crypto.SHA256, hash[:], decodedSign)
+	if err1 != nil {
+		t.Errorf("Error signing message: %v", err)
+	}
+
+	var out outputData
+	outJSON, err := json.MarshalIndent(signature, "", "    ")
+	err = json.Unmarshal([]byte(outJSON), &out)
+	if err != nil {
+		t.Errorf("Error unmarshaling json: %v", err)
+	}
 }
