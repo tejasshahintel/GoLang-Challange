@@ -4,11 +4,26 @@ import ("fmt"
 		"os"
 		//"reflect"
 		"errors"
+		//"crypto/ecdsa"
+		//"math/rand"
+		"crypto"
 		"crypto/rand"
 		"crypto/rsa"
 		"crypto/x509"
+		"crypto/sha256"
 		"encoding/pem"
+		"encoding/base64"
+		"encoding/json"
+		//"encoding/asn1"
+		"io/ioutil"
+		//b64 "encoding/base64"
 )
+
+type outputData struct {
+	Message   string `json:"message"`
+	Signature string `json:"signature"`
+	PubKey    string `json:"pubkey"`
+}
 
 func checkError(errStr error){
 	if errStr!= nil{
@@ -18,65 +33,76 @@ func checkError(errStr error){
 }
 //Method to validate inputs. Checks if string is provided. Also, checks for the length of the string
 func validateInput(args []string)(error){
-
 	if len(os.Args)!=2{
 		return errors.New("Invalid number of inputs")
 		//os.Exit(1)
 	}
 		
 	if len(os.Args[1]) > 250 {
-		return errors.New("Invalid Iput string.Please prvide string that is less than 250 chars")
-	
+		return errors.New("Invalid Input string.Please prvide string that is less than 250 chars")
 	}
 	return nil
 }
 
-func GenerateKeys()error{
+func createFileforKey(keyObj []uint8, filename string) error {
 
+	if err := ioutil.WriteFile(filename, keyObj, 0700); err != nil {
+        return errors.New("Not able to wrrite key to the file"+filename)
+    }
+	return nil
+}
+
+func generateKeys()(*rsa.PrivateKey, string, error) {
 	key, err := rsa.GenerateKey(rand.Reader, 4096)
-	
 	if err!= nil{
-		return errors.New("Invalid Iput string.Please prvide string that is less than 250 chars")
+		return nil, "",errors.New("Invalid Iput string.Please prvide string that is less than 250 chars")
 	}
 	
-	fmt.Println("Generating Public Key ..")
 	pubKey := key.Public()
-	//fmt.Println(pubKey)
 	
 	//Encoding Private Key
-	keyPEM := pem.EncodeToMemory(
-        &pem.Block{
+	keyPEM := &pem.Block{
             Type:  "RSA PRIVATE KEY",
-            Bytes: x509.MarshalPKCS1PrivateKey(key),
-        },
-    )
-	fmt.Println(keyPEM)
+            Bytes: x509.MarshalPKCS1PrivateKey(key)}
+    
+	encodedPrivKey := pem.EncodeToMemory(keyPEM)
 	
-
     // Encode public key to PKCS#1 ASN.1 PEM.
-    pubPEM := pem.EncodeToMemory(
-        &pem.Block{
+    pubPEM := &pem.Block{
             Type:  "RSA PUBLIC KEY",
-            Bytes: x509.MarshalPKCS1PublicKey(pubKey.(*rsa.PublicKey)),
-        },
-    )
-	fmt.Println("\n Public Key:\n\n")
-	fmt.Println(pubPEM)
-	return nil
-}
-func main() {
-	fmt.Println("crypto sign code challenge")
+            Bytes: x509.MarshalPKCS1PublicKey(pubKey.(*rsa.PublicKey))}
+    
+	encodedPubKey := pem.EncodeToMemory(pubPEM)
+	fmt.Println("\n Public Key:\n")
+	fmt.Println(encodedPubKey)
 
+	// Write private key to file.
+    filename := "key"
+	err = createFileforKey(encodedPrivKey,filename+".rsa")
+	checkError(err)
+
+	err = createFileforKey(encodedPubKey,filename+".rsa.pub")
+	checkError(err)
+	return key, string(encodedPubKey), nil
+}
+
+func main() {
 	
-	fmt.Println(os.Args[0])
-	//fmt.Println(reflect.TypeOf(os.Args))
+	var (
+		privateKey *rsa.PrivateKey
+		publicKey  string
+	)
+	
 	err := validateInput(os.Args)
 	checkError(err)
 
 	input := os.Args[1]
 	fmt.Println(input)
-	err = GenerateKeys()
-	checkError(err)
+	privateKey, publicKey, err = generateKeys()
+	//checkError(err)
 	
-
+	output, err := perfSignature(input, publicKey, privateKey)
+	outJSON, err := json.MarshalIndent(output, "", "    ")
+	err = ioutil.WriteFile("output.json", outJSON, 0644)
+	fmt.Println("\n\n\nOutput JSON File:\n",string(outJSON))
 }
