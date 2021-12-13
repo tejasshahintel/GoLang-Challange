@@ -23,7 +23,6 @@ type outputData struct {
 	Message   string `json:"message"`
 	Signature string `json:"signature"`
 	PubKey    string `json:"pubkey"`
-}
 
 func checkError(errStr error){
 	if errStr!= nil{
@@ -42,6 +41,31 @@ func validateInput(args []string)(error){
 		return errors.New("Invalid Input string.Please prvide string that is less than 250 chars")
 	}
 	return nil
+}
+func perfSignature(input, pubKey string,privKey *rsa.PrivateKey)(outputData, error){
+	
+	var output outputData
+	data := []byte(input)
+	fmt.Println(data)
+	hash := sha256.Sum256(data)
+	fmt.Printf("%x", hash[:])
+	fmt.Printf("data = %T\n", data)
+	fmt.Printf("hash = %T\n", hash)
+	signature, err := rsa.SignPKCS1v15(rand.Reader, privKey, crypto.SHA256, hash[:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error from signing: %s\n", err)
+		return output, err
+	}
+	fmt.Printf("signature: %v\n", signature)
+	fmt.Printf("Type signature: %T\n", signature)
+	encodedSign := base64.StdEncoding.EncodeToString([]byte(signature))
+	//fmt.Printf("encodedSign: %v\n", encodedSign)
+	
+	output.Message = input
+	output.Signature = encodedSign
+	output.PubKey = pubKey
+	fmt.Println(output)
+	return output, nil
 }
 
 func createFileforKey(keyObj []uint8, filename string) error {
@@ -99,10 +123,5 @@ func main() {
 	input := os.Args[1]
 	fmt.Println(input)
 	privateKey, publicKey, err = generateKeys()
-	//checkError(err)
 	
-	output, err := perfSignature(input, publicKey, privateKey)
-	outJSON, err := json.MarshalIndent(output, "", "    ")
-	err = ioutil.WriteFile("output.json", outJSON, 0644)
-	fmt.Println("\n\n\nOutput JSON File:\n",string(outJSON))
 }
