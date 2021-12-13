@@ -123,5 +123,9 @@ func main() {
 	input := os.Args[1]
 	fmt.Println(input)
 	privateKey, publicKey, err = generateKeys()
+	output, err := perfSignature(input, publicKey, privateKey)
+	outJSON, err := json.MarshalIndent(output, "", "    ")
+	err = ioutil.WriteFile("output.json", outJSON, 0644)
+	fmt.Println("\n\n\nOutput JSON File:\n",string(outJSON))
 	
 }
