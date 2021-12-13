@@ -1,13 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
-	//"reflect"
-	"errors"
-	//"crypto/ecdsa"
-	//"math/rand"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -16,10 +9,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
-
-	//"encoding/asn1"
+	"errors"
+	"fmt"
 	"io/ioutil"
-	//b64 "encoding/base64"
+	"os"
 )
 
 type outputData struct {
