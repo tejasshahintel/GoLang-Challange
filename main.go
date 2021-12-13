@@ -15,6 +15,7 @@ import (
 	"os"
 )
 
+//output data that will be written in JSON file
 type outputData struct {
 	Message   string `json:"message"`
 	Signature string `json:"signature"`
@@ -28,7 +29,8 @@ func checkError(errStr error) {
 	}
 }
 
-//Method to validate inputs. Checks if string is provided. Also, checks for the length of the string
+/*Method to validate inputs. Checks if string is provided. 
+Also, checks for the length of the string*/
 func validateInput(args []string) error {
 	if len(os.Args) != 2 {
 		return errors.New("Invalid number of inputs")
@@ -40,15 +42,17 @@ func validateInput(args []string) error {
 	}
 	return nil
 }
+
 func perfSignature(input, pubKey string, privKey *rsa.PrivateKey) (outputData, error) {
 
 	var output outputData
-	data := []byte(input)
 
+	/*Perform Hashing using SHA256 hash algorithms
+	Referenced from: https://pkg.go.dev/crypto/sha256 */
+	data := []byte(input)
 	hash := sha256.Sum256(data)
-	//fmt.Printf("%x", hash[:])
-	//fmt.Printf("data = %T\n", data)
-	//fmt.Printf("hash = %T\n", hash)
+	
+	//Referenced from https://pkg.go.dev/crypto/rsa#SignPKCS1v15
 	signature, err := rsa.SignPKCS1v15(rand.Reader, privKey, crypto.SHA256, hash[:])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error from signing: %s\n", err)
@@ -57,12 +61,16 @@ func perfSignature(input, pubKey string, privKey *rsa.PrivateKey) (outputData, e
 
 	encodedSign := base64.StdEncoding.EncodeToString([]byte(signature))
 
+	/*Storing the results in outputData struct to be 
+	written in JSON*/
 	output.Message = input
 	output.Signature = encodedSign
 	output.PubKey = pubKey
 	return output, nil
 }
 
+/*Method to write the keys into filename. This creates .rsa and .rsa.pub files
+for keys*/
 func createFileforKey(keyObj []uint8, filename string) error {
 
 	if err := ioutil.WriteFile(filename, keyObj, 0700); err != nil {
@@ -71,6 +79,9 @@ func createFileforKey(keyObj []uint8, filename string) error {
 	return nil
 }
 
+/*Referenced from:
+https://pkg.go.dev/crypto/rsa#GenerateKey 
+https://stackoverflow.com/questions/64104586/use-golang-to-get-rsa-key-the-same-way-openssl-genrsa */
 func generateKeys() (*rsa.PrivateKey, string, error) {
 	key, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
@@ -79,7 +90,7 @@ func generateKeys() (*rsa.PrivateKey, string, error) {
 
 	pubKey := key.Public()
 
-	//Encoding Private Key
+	//Converting an RSA private key to PKCS #1, ASN.1 DER form
 	keyPEM := &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(key)}
@@ -117,6 +128,8 @@ func main() {
 
 	privateKey, publicKey, err = generateKeys()
 	output, err := perfSignature(input, publicKey, privateKey)
+	
+	//Converting it to JSON
 	outJSON, err := json.MarshalIndent(output, "", "    ")
 	err = ioutil.WriteFile("output.json", outJSON, 0644)
 	fmt.Println("\n\n\nOutput JSON File:\n", string(outJSON))
